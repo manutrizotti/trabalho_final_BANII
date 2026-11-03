@@ -1,0 +1,46 @@
+.card {
+  background: #000;
+  border-radius: var(--raio);
+  padding: 16px 22px 14px;
+  font-size: var(--texto-item);
+  display: flex;
+  flex-direction: column;
+}
+
+.topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #888;
+  padding-bottom: 6px;
+  margin-bottom: 12px;
+}
+
+.titulo {
+  font-family: var(--fonte-titulo);
+  font-weight: 400;
+  font-size: 32px;
+  text-transform: uppercase;
+}
+
+.riscado { text-decoration: line-through; }
+
+.menu {
+  width: 40px;
+  height: 40px;
+  background: var(--cor-dourado-mesas);
+  color: #000;
+  border: none;
+  border-radius: var(--raio-pequeno);
+  font-size: 22px;
+}
+
+.acao {
+  margin-top: 8px;
+  background: var(--cor-dourado-mesas);
+  color: #000;
+  border: none;
+  border-radius: var(--raio-pequeno);
+  padding: 6px;
+  font-size: var(--texto-item);
+}

@@ -1,0 +1,66 @@
+.fundo {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 20px;
+}
+
+.caixa {
+  background: #fff;
+  color: #000;
+  width: 100%;
+  max-width: 460px;
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  font-family: var(--fonte-modal-geral);
+  font-size: 14px;
+}
+
+.vermelho { border: 1px solid var(--cor-perigo); }
+.verde { border: 1px solid var(--cor-sucesso); }
+
+.icone {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.iconeVermelho { background: var(--cor-perigo); }
+.iconeVerde { background: var(--cor-sucesso); }
+
+.mensagem { text-align: center; }
+
+.botoes {
+  display: flex;
+  gap: 40px;
+  align-items: center;
+}
+
+.cancelar {
+  background: transparent;
+  border: none;
+  color: var(--cor-perigo);
+  font-size: 18px;
+  padding: 10px 20px;
+}
+
+.confirmar {
+  background: var(--cor-perigo);
+  color: #fff;
+  border: none;
+  border-radius: var(--raio);
+  font-size: 18px;
+  padding: 10px 40px;
+}

@@ -1,0 +1,83 @@
+@import url('https://fonts.googleapis.com/css2?family=Abel&family=Aboreto&family=Babylonica&family=Inter:wght@400;500&family=Abhaya+Libre:wght@600&family=Italianno&display=swap');
+
+:root {
+  /* cores base */
+  --cor-fundo: #000000;
+  --cor-texto: #ffffff;
+  --cor-borda: #ffffff;
+
+  /* cores de ação */
+  --cor-editar: #ba0000;
+  --cor-perigo: #a20000;
+  --cor-sucesso: #33d746;
+
+  /* superfícies */
+  --cor-cartao: #d9d9d9;
+  --cor-cartao-escuro: #312c2c;
+  --cor-campo: #e2e2e2;
+  --cor-selecionado: #bcbaba;
+
+  /* destaques por aba */
+  --cor-dourado-cardapio: #6c6043;
+  --cor-dourado-mesas: #c99458;
+
+  /* botões da cozinha (sugestão minha) */
+  --cor-cozinha-comecar: #bf4040;
+  --cor-cozinha-finalizar: #be9640;
+  --cor-cozinha-servir: #5f9e34;
+
+  /* fontes */
+  --fonte-texto: 'Abel', sans-serif;
+  --fonte-titulo: 'Aboreto', serif;
+  --fonte-logo: 'Babylonica', cursive;
+  --fonte-modal-geral: 'Inter', sans-serif;
+  --fonte-garcom: 'Abhaya Libre', serif;
+  --fonte-cursiva: 'Italianno', cursive;
+
+  /* tamanhos de texto */
+  --texto-pequeno: 14px;
+  --texto-normal: 18px;
+  --texto-busca: 22px;
+  --texto-nav: 20px;
+  --texto-item: 26px;
+  --texto-modal-titulo: 32px;
+
+  /* bordas */
+  --raio-pequeno: 5px;
+  --raio: 10px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--cor-fundo);
+  color: var(--cor-texto);
+  font-family: var(--fonte-texto);
+  font-size: var(--texto-normal);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+select option {
+  background: #000;
+  color: #fff;
+}

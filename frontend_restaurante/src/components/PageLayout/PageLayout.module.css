@@ -1,0 +1,11 @@
+.pagina {
+  min-height: 100vh;
+  background-color: var(--cor-fundo);
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+
+.conteudo {
+  padding: 30px 60px 60px;
+}

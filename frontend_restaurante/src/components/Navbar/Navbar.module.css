@@ -1,0 +1,38 @@
+.navbar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 40px 60px 0;
+}
+
+.logo {
+  font-family: var(--fonte-logo);
+  font-size: 110px;
+  line-height: 0.8;
+  color: var(--cor-texto);
+}
+
+.menu {
+  display: flex;
+  gap: 24px;
+  background: #000;
+  padding: 10px 30px;
+}
+
+.link {
+  font-family: var(--fonte-titulo);
+  text-transform: uppercase;
+  font-size: var(--texto-nav);
+  color: var(--cor-texto);
+}
+
+.ativo {
+  border-bottom: 1px solid var(--cor-borda);
+}
+
+.sair {
+  background: transparent;
+  color: var(--cor-texto);
+  border: 2px solid var(--cor-borda);
+  padding: 8px 16px;
+}

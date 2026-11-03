@@ -5,7 +5,7 @@ import type { FiltroItens, ItemCardapioRepository } from '../repositories/ItemCa
 // Limites (ajuste aqui se precisar)
 const MAX_CODIGO = 10
 const MAX_NOME = 60
-const MAX_DESCRICAO = 150
+const MAX_DESCRICAO = 300
 const MAX_PRECO = 9999.99
 const MAX_TEMPO = 240
 const MAX_QTD_NO_COMBO = 99
@@ -38,9 +38,9 @@ export class ItemCardapioService {
 
   async criar(d: DadosItem): Promise<ItemCardapio> {
     const ehCombo = d.ehCombo === true
-    const codigo = (d.codigo ?? '').trim()
-    if (!codigo) throw new ErroDeNegocio('Informe o código do produto.')
-    if (codigo.length > MAX_CODIGO) throw new ErroDeNegocio(`O código deve ter no máximo ${MAX_CODIGO} caracteres.`)
+
+    const nome = this.validarNome(d.nome)
+    const codigo = this.validarCodigo(d.codigo)
 
     let categoria: Categoria | null = null
     if (!ehCombo) {
@@ -48,19 +48,24 @@ export class ItemCardapioService {
       categoria = d.categoria as Categoria
     }
 
-    const campos = this.validarCampos(d)
+    const itens = d.itens ?? []
+    if (ehCombo && itens.length === 0) throw new ErroDeNegocio('O combo precisa ter ao menos um item.')
+
+    const descricao = this.validarDescricao(d.descricao)
+    const preco = this.validarPreco(d.preco)
+    const tempoPreparoMinutos = this.validarTempo(d.tempoPreparoMinutos)
 
     if (await this.repo.buscarPorCodigo(codigo)) {
       throw new ErroDeNegocio('Já existe um item com esse código.', 409)
     }
 
-    const itens = d.itens ?? []
     if (ehCombo) {
-      if (itens.length === 0) throw new ErroDeNegocio('O combo precisa ter ao menos um item.')
       for (const i of itens) await this.validarItemDoCombo(i.idItem, i.quantidade)
     }
 
-    const criado = await this.repo.inserir({ codigo, categoria, ehCombo, ...campos })
+    const criado = await this.repo.inserir({
+      codigo, categoria, ehCombo, nome, descricao, preco, tempoPreparoMinutos,
+    })
 
     if (ehCombo) {
       try {
@@ -75,9 +80,13 @@ export class ItemCardapioService {
 
   async atualizar(id: string, d: DadosItem): Promise<ItemCardapio> {
     await this.buscarPorId(id)
-    const campos = this.validarCampos(d)
+    const nome = this.validarNome(d.nome)
+    const descricao = this.validarDescricao(d.descricao)
+    const preco = this.validarPreco(d.preco)
+    const tempoPreparoMinutos = this.validarTempo(d.tempoPreparoMinutos)
+
     const atualizado = await this.repo.atualizar(id, {
-      ...campos,
+      nome, descricao, preco, tempoPreparoMinutos,
       disponivel: d.disponivel !== false,
     })
     if (!atualizado) throw new ErroDeNegocio('Item não encontrado.', 404)
@@ -122,29 +131,64 @@ export class ItemCardapioService {
     await this.repo.removerDaComposicao(idCombo, idItem)
   }
 
+  async substituirComposicao(idCombo: string, itens: { idItem: string; quantidade: number }[]): Promise<void> {
+    await this.exigirCombo(idCombo)
+    if (itens.length === 0) throw new ErroDeNegocio('O combo precisa ter ao menos um item.')
+    for (const i of itens) await this.validarItemDoCombo(i.idItem, i.quantidade)
+
+    const atuais = await this.repo.listarComposicao(idCombo)
+    const novos = new Map(itens.map((i) => [i.idItem, i.quantidade]))
+
+    for (const a of atuais) {
+      if (!novos.has(a.idItem)) await this.repo.removerDaComposicao(idCombo, a.idItem)
+    }
+    for (const [idItem, qtd] of novos) {
+      if (atuais.some((a) => a.idItem === idItem)) await this.repo.atualizarQuantidadeNaComposicao(idCombo, idItem, qtd)
+      else await this.repo.adicionarNaComposicao(idCombo, idItem, qtd)
+    }
+  }
+
   // ----- validações privadas -----
 
-  private validarCampos(d: DadosItem) {
-    const nome = (d.nome ?? '').trim()
+  private validarNome(valor: unknown): string {
+    const nome = String(valor ?? '').trim()
     if (!nome) throw new ErroDeNegocio('Informe o nome do produto.')
     if (nome.length > MAX_NOME) throw new ErroDeNegocio(`O nome deve ter no máximo ${MAX_NOME} caracteres.`)
+    return nome
+  }
 
-    const descricao = (d.descricao ?? '').trim()
+  private validarCodigo(valor: unknown): string {
+    const codigo = String(valor ?? '').trim()
+    if (!codigo) throw new ErroDeNegocio('Informe o código do produto.')
+    if (codigo.length > MAX_CODIGO) throw new ErroDeNegocio(`O código deve ter no máximo ${MAX_CODIGO} caracteres.`)
+    return codigo
+  }
+
+  private validarDescricao(valor: unknown): string {
+    const descricao = String(valor ?? '').trim()
+    if (!descricao) throw new ErroDeNegocio('Descreva o produto.')
     if (descricao.length > MAX_DESCRICAO) {
       throw new ErroDeNegocio(`A descrição deve ter no máximo ${MAX_DESCRICAO} caracteres.`)
     }
+    return descricao
+  }
 
-    const preco = Number(d.preco)
+  private validarPreco(valor: unknown): number {
+    if (valor === undefined || valor === null || valor === '') throw new ErroDeNegocio('Informe o preço do produto.')
+    const preco = Number(valor)
     if (!Number.isFinite(preco) || preco <= 0 || preco > MAX_PRECO) {
       throw new ErroDeNegocio(`O preço deve estar entre 0,01 e ${MAX_PRECO.toFixed(2).replace('.', ',')}.`)
     }
+    return preco
+  }
 
-    const tempo = Number(d.tempoPreparoMinutos ?? 0)
+  private validarTempo(valor: unknown): number {
+    if (valor === undefined || valor === null || valor === '') throw new ErroDeNegocio('Informe o tempo de preparo.')
+    const tempo = Number(valor)
     if (!Number.isInteger(tempo) || tempo < 0 || tempo > MAX_TEMPO) {
       throw new ErroDeNegocio(`O tempo de preparo deve ser um número inteiro entre 0 e ${MAX_TEMPO} minutos.`)
     }
-
-    return { nome, descricao, preco, tempoPreparoMinutos: tempo }
+    return tempo
   }
 
   private validarQuantidade(q: number): void {

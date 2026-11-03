@@ -100,8 +100,6 @@
 
 .vazio { padding: 12px; color: #555; }
 
-.erro { color: var(--cor-perigo); font-size: 16px; }
-
 .rodape {
   display: flex;
   justify-content: space-between;
@@ -140,3 +138,7 @@
 }
 
 .icone:disabled { opacity: 0.5; }
+
+.invalido {
+  outline: 1px solid #ba0000;
+}

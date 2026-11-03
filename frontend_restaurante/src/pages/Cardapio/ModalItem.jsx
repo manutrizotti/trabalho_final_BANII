@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import Modal from '../../components/Modal/Modal'
+import Campo from '../../components/Campo/Campo'
 import { cardapioService } from '../../services/cardapioService'
 import styles from './ModalItem.module.css'
 
@@ -11,14 +12,58 @@ const CATEGORIAS = [
   { valor: 'bebidas não alcoólicas', rotulo: 'Bebida não alcoólica' },
 ]
 
+const MAX_NOME = 60
+const MAX_CODIGO = 10
+const MAX_DESCRICAO = 300
+const MAX_PRECO = 9999.99
+const MAX_TEMPO = 240
+
 const VAZIO = {
   codigo: '',
   categoria: '',
   nome: '',
   descricao: '',
   preco: '',
-  tempoPreparoMinutos: 0,
+  tempoPreparoMinutos: '', // vazio de propósito: é obrigatório (0 é permitido)
   disponivel: true,
+}
+
+const vazio = (v) => String(v ?? '').trim() === ''
+
+// Retorna { campo: mensagem } na ordem: nome, código, categoria, (itens), descrição, preço, tempo
+function validar(form, { editando, ehCombo, qtdItens }) {
+  const e = {}
+
+  if (vazio(form.nome)) e.nome = 'Informe o nome do produto.'
+
+  if (!editando) {
+    if (vazio(form.codigo)) e.codigo = 'Informe o código do produto.'
+    if (!ehCombo && !form.categoria) e.categoria = 'Selecione uma categoria.'
+  }
+
+  if (ehCombo && qtdItens === 0) e.itens = 'Adicione ao menos um item ao combo.'
+
+  if (vazio(form.descricao)) e.descricao = 'Descreva o produto.'
+
+  if (vazio(form.preco)) {
+    e.preco = 'Informe o preço do produto.'
+  } else {
+    const preco = Number(String(form.preco).replace(',', '.'))
+    if (!Number.isFinite(preco) || preco <= 0 || preco > MAX_PRECO) {
+      e.preco = 'O preço deve estar entre 0,01 e 9999,99.'
+    }
+  }
+
+  if (vazio(form.tempoPreparoMinutos)) {
+    e.tempo = 'Informe o tempo de preparo.'
+  } else {
+    const t = Number(form.tempoPreparoMinutos)
+    if (!Number.isInteger(t) || t < 0 || t > MAX_TEMPO) {
+      e.tempo = `O tempo deve ser um inteiro entre 0 e ${MAX_TEMPO} minutos.`
+    }
+  }
+
+  return e
 }
 
 // item: quando for edição, o item existente. Quando nulo, é inserção.
@@ -33,12 +78,13 @@ function ModalItem({ item, onFechar, onSalvar, onExcluir }) {
           nome: item.nome,
           descricao: item.descricao,
           preco: String(item.preco),
-          tempoPreparoMinutos: item.tempoPreparoMinutos,
+          tempoPreparoMinutos: String(item.tempoPreparoMinutos),
           disponivel: item.disponivel,
         }
       : VAZIO,
   )
-  const [erro, setErro] = useState('')
+  const [errosCampo, setErrosCampo] = useState({})
+  const [erro, setErro] = useState('') // erro geral (vindo do servidor)
   const [salvando, setSalvando] = useState(false)
 
   // composição do combo: { [idItem]: quantidade }
@@ -61,15 +107,25 @@ function ModalItem({ item, onFechar, onSalvar, onExcluir }) {
     }
   }, [editando, item])
 
-  // itens do combo primeiro (como você pediu), depois os demais; cada grupo em ordem alfabética
   const itensOrdenados = useMemo(() => {
     const dentro = todosItens.filter((i) => selecionados[i.id] !== undefined)
     const fora = todosItens.filter((i) => selecionados[i.id] === undefined)
     return [...dentro, ...fora]
   }, [todosItens, selecionados])
 
-  function mudar(campo, valor) {
+  // limpa o erro do campo assim que a pessoa mexe nele
+  function limparErro(chave) {
+    setErrosCampo((e) => {
+      if (!e[chave]) return e
+      const { [chave]: _, ...resto } = e
+      return resto
+    })
+  }
+
+  function mudar(campo, valor, chaveErro = campo) {
     setForm((f) => ({ ...f, [campo]: valor }))
+    limparErro(chaveErro)
+    setErro('')
   }
 
   function alternarItem(id) {
@@ -79,6 +135,7 @@ function ModalItem({ item, onFechar, onSalvar, onExcluir }) {
       else novo[id] = 1
       return novo
     })
+    limparErro('itens')
   }
 
   function mudarQuantidade(id, delta) {
@@ -91,9 +148,15 @@ function ModalItem({ item, onFechar, onSalvar, onExcluir }) {
 
   async function salvar() {
     setErro('')
+
+    const erros = validar(form, { editando, ehCombo, qtdItens: Object.keys(selecionados).length })
+    setErrosCampo(erros)
+    if (Object.keys(erros).length > 0) return // não chama a API
+
     setSalvando(true)
     try {
       const preco = Number(String(form.preco).replace(',', '.'))
+      const tempo = Number(form.tempoPreparoMinutos)
       const itens = Object.entries(selecionados).map(([idItem, quantidade]) => ({ idItem, quantidade }))
 
       if (editando) {
@@ -101,7 +164,7 @@ function ModalItem({ item, onFechar, onSalvar, onExcluir }) {
           nome: form.nome,
           descricao: form.descricao,
           preco,
-          tempoPreparoMinutos: Number(form.tempoPreparoMinutos),
+          tempoPreparoMinutos: tempo,
           disponivel: form.disponivel,
         })
         if (item.ehCombo) await cardapioService.atualizarComposicao(item.id, itens)
@@ -113,7 +176,7 @@ function ModalItem({ item, onFechar, onSalvar, onExcluir }) {
           nome: form.nome,
           descricao: form.descricao,
           preco,
-          tempoPreparoMinutos: Number(form.tempoPreparoMinutos),
+          tempoPreparoMinutos: tempo,
           ehCombo,
           itens: ehCombo ? itens : undefined,
         })
@@ -127,8 +190,9 @@ function ModalItem({ item, onFechar, onSalvar, onExcluir }) {
   }
 
   const titulo = editando ? 'Editar item' : 'Inserir item'
-  // ao editar, a aba não troca: item continua item e combo continua combo
   const abaTravada = editando
+  const cls = (chave, extra = '') =>
+    `${styles.campo} ${extra} ${errosCampo[chave] ? styles.invalido : ''}`
 
   return (
     <Modal titulo={titulo} onFechar={onFechar}>
@@ -150,33 +214,32 @@ function ModalItem({ item, onFechar, onSalvar, onExcluir }) {
       </div>
 
       <div className={styles.corpo}>
-        <label className={styles.rotulo}>Informe o nome do produto</label>
-        <input
-          className={styles.campo}
-          value={form.nome}
-          maxLength={60}
-          onChange={(e) => mudar('nome', e.target.value)}
-          placeholder="Texto"
-        />
+        <Campo rotulo="Informe o nome do produto" obrigatorio erro={errosCampo.nome}>
+          <input
+            className={cls('nome')}
+            value={form.nome}
+            maxLength={MAX_NOME}
+            onChange={(e) => mudar('nome', e.target.value)}
+            placeholder="Texto"
+          />
+        </Campo>
 
         <div className={styles.linha}>
-          <div className={styles.coluna}>
-            <label className={styles.rotulo}>Informe o código do produto</label>
+          <Campo rotulo="Informe o código do produto" obrigatorio={!editando} erro={errosCampo.codigo}>
             <input
-              className={`${styles.campo} ${editando ? styles.desabilitado : ''}`}
+              className={cls('codigo', editando ? styles.desabilitado : '')}
               value={form.codigo}
-              maxLength={10}
+              maxLength={MAX_CODIGO}
               disabled={editando}
               onChange={(e) => mudar('codigo', e.target.value)}
               placeholder="Texto"
             />
-          </div>
+          </Campo>
 
           {!ehCombo && (
-            <div className={styles.coluna}>
-              <label className={styles.rotulo}>Selecione a categoria</label>
+            <Campo rotulo="Selecione a categoria" obrigatorio={!editando} erro={errosCampo.categoria}>
               <select
-                className={`${styles.campo} ${editando ? styles.desabilitado : ''}`}
+                className={cls('categoria', editando ? styles.desabilitado : '')}
                 value={form.categoria}
                 disabled={editando}
                 onChange={(e) => mudar('categoria', e.target.value)}
@@ -186,13 +249,12 @@ function ModalItem({ item, onFechar, onSalvar, onExcluir }) {
                   <option key={c.valor} value={c.valor}>{c.rotulo}</option>
                 ))}
               </select>
-            </div>
+            </Campo>
           )}
         </div>
 
         {ehCombo && (
-          <>
-            <label className={styles.rotulo}>Itens do combo</label>
+          <Campo rotulo="Itens do combo" obrigatorio erro={errosCampo.itens}>
             <ul className={styles.listaCombo}>
               {itensOrdenados.map((i) => {
                 const qtd = selecionados[i.id]
@@ -215,22 +277,22 @@ function ModalItem({ item, onFechar, onSalvar, onExcluir }) {
               })}
               {itensOrdenados.length === 0 && <li className={styles.vazio}>Cadastre itens antes de montar um combo.</li>}
             </ul>
-          </>
+          </Campo>
         )}
 
-        <label className={styles.rotulo}>Descreva o produto</label>
-        <textarea
-          className={`${styles.campo} ${styles.descricao}`}
-          value={form.descricao}
-          maxLength={150}
-          onChange={(e) => mudar('descricao', e.target.value)}
-        />
-        <small className={styles.contador}>{form.descricao.length}/150</small>
+        <Campo rotulo="Descreva o produto" obrigatorio erro={errosCampo.descricao}>
+          <textarea
+            className={cls('descricao', styles.descricao)}
+            value={form.descricao}
+            maxLength={MAX_DESCRICAO}
+            onChange={(e) => mudar('descricao', e.target.value)}
+          />
+          <small className={styles.contador}>{form.descricao.length}/{MAX_DESCRICAO}</small>
+        </Campo>
 
         <div className={styles.linha}>
-          <div className={styles.coluna}>
-            <label className={styles.rotulo}>Informe o preço do produto</label>
-            <div className={styles.comPrefixo}>
+          <Campo rotulo="Informe o preço do produto" obrigatorio erro={errosCampo.preco}>
+            <div className={`${styles.comPrefixo} ${errosCampo.preco ? styles.invalido : ''}`}>
               <span>R$</span>
               <input
                 className={styles.campoSemBorda}
@@ -240,22 +302,21 @@ function ModalItem({ item, onFechar, onSalvar, onExcluir }) {
                 placeholder="0,00"
               />
             </div>
-          </div>
+          </Campo>
 
-          <div className={styles.coluna}>
-            <label className={styles.rotulo}>Tempo de preparo</label>
-            <div className={styles.comPrefixo}>
+          <Campo rotulo="Tempo de preparo" obrigatorio erro={errosCampo.tempo}>
+            <div className={`${styles.comPrefixo} ${errosCampo.tempo ? styles.invalido : ''}`}>
               <input
                 className={styles.campoSemBorda}
                 type="number"
                 min="0"
-                max="240"
+                max={MAX_TEMPO}
                 value={form.tempoPreparoMinutos}
-                onChange={(e) => mudar('tempoPreparoMinutos', e.target.value)}
+                onChange={(e) => mudar('tempoPreparoMinutos', e.target.value, 'tempo')}
               />
               <span>minutos</span>
             </div>
-          </div>
+          </Campo>
         </div>
 
         {erro && <p className={styles.erro}>{erro}</p>}

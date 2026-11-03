@@ -1,0 +1,22 @@
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.rotulo {
+  font-size: 16px; /* use o mesmo valor do .rotulo do ModalItem.module.css */
+}
+
+.asterisco {
+  color: #ba0000;
+  font-weight: 700;
+}
+
+.erro {
+  color: #ba0000;
+  font-size: 14px;
+  margin: 0;
+}

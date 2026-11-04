@@ -27,6 +27,13 @@ function CardMesa({ mesa, onMenu, onRecuperar, onOcupar, onVisualizar }) {
       <p>Capacidade: {mesa.capacidade}</p>
       <p>Status: {mesa.status}</p>
 
+      {mesa.reservaHoje && (
+        <div className={styles.selo}>
+          <strong>Reservada às {mesa.reservaHoje.hora}</strong>
+          <span>{mesa.reservaHoje.nomeCliente}</span>
+        </div>
+      )}
+
       <button className={styles.acao} onClick={acao}>{rotulo}</button>
     </article>
   )

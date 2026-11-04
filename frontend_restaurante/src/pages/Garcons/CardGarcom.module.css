@@ -1,0 +1,71 @@
+.card {
+  background: #000;
+  border: 2px solid var(--cor-borda);
+}
+
+.principal {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 16px 20px 40px;
+}
+
+.identificacao {
+  width: 400px;
+  max-width: 35%;
+  align-self: stretch;
+  border-right: 1px solid #fff;
+  padding-right: 16px;
+}
+
+.nome {
+  font-family: var(--fonte-titulo);
+  font-weight: 400;
+  font-size: var(--texto-item);
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.codigo { font-size: var(--texto-normal); text-transform: uppercase; }
+
+.dados {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: var(--fonte-garcom);
+}
+
+.linha {
+  display: flex;
+  justify-content: space-between;
+  background: var(--cor-cartao-escuro);
+  padding: 4px 8px;
+  font-size: 20px;
+}
+
+.linha dt { font-weight: 600; }
+.linha dd { font-family: var(--fonte-texto); }
+
+.editar {
+  width: 50px;
+  height: 50px;
+  flex-shrink: 0;
+  background: var(--cor-editar);
+  color: #fff;
+  border: none;
+  border-radius: var(--raio);
+  font-size: 26px;
+}
+
+.rodape {
+  background: var(--cor-cartao-escuro);
+  border-top: 2px solid var(--cor-borda);
+  text-align: right;
+  padding: 2px 14px;
+  font-size: 20px;
+}
+
+.statusAtivo { color: var(--cor-sucesso); }
+.statusFerias { color: var(--cor-dourado-mesas); }
+.statusDemitido { color: #ff6b6b; }

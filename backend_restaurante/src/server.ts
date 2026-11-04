@@ -10,6 +10,22 @@ import { MesaRepositoryPg } from './repositories/postgres/MesaRepositoryPg.js'
 import { MesaService } from './services/MesaService.js'
 import { MesaController } from './controllers/MesaController.js'
 import { criarMesaRoutes } from './routes/mesaRoutes.js'
+import { ClienteRepositoryPg } from './repositories/postgres/ClienteRepositoryPg.js'
+import { ClienteService } from './services/ClienteService.js'
+import { ClienteController } from './controllers/ClienteController.js'
+import { criarClienteRoutes } from './routes/clienteRoutes.js'
+import { GarcomRepositoryPg } from './repositories/postgres/GarcomRepositoryPg.js'
+import { GarcomService } from './services/GarcomService.js'
+import { GarcomController } from './controllers/GarcomController.js'
+import { criarGarcomRoutes } from './routes/garcomRoutes.js'
+import { ReservaRepositoryPg } from './repositories/postgres/ReservaRepositoryPg.js'
+import { ReservaService } from './services/ReservaService.js'
+import { ReservaController } from './controllers/ReservaController.js'
+import { criarReservaRoutes } from './routes/reservaRoutes.js'
+import { CozinhaRepositoryPg } from './repositories/postgres/CozinhaRepositoryPg.js'
+import { CozinhaService } from './services/CozinhaService.js'
+import { CozinhaController } from './controllers/CozinhaController.js'
+import { criarCozinhaRoutes } from './routes/cozinhaRoutes.js'
 
 const app = express()
 app.use(cors())
@@ -24,11 +40,32 @@ const cardapioRepo = new ItemCardapioRepositoryPg()
 const cardapioService = new ItemCardapioService(cardapioRepo)
 const cardapioController = new ItemCardapioController(cardapioService)
 app.use('/api/cardapio', criarCardapioRoutes(cardapioController))
+// Exceção reserva
+const reservaRepo = new ReservaRepositoryPg()
 // Mesas: repository -> service -> controller -> rotas
 const mesaRepo = new MesaRepositoryPg()
-const mesaService = new MesaService(mesaRepo)
+const mesaService = new MesaService(mesaRepo, reservaRepo)
 const mesaController = new MesaController(mesaService)
 app.use('/api/mesas', criarMesaRoutes(mesaController))
+// Clientes: repository -> service -> controller -> rotas
+const clienteRepo = new ClienteRepositoryPg()
+const clienteService = new ClienteService(clienteRepo)
+const clienteController = new ClienteController(clienteService)
+app.use('/api/clientes', criarClienteRoutes(clienteController))
+// Garçons: repository -> service -> controller -> rotas
+const garcomRepo = new GarcomRepositoryPg()
+const garcomService = new GarcomService(garcomRepo)
+const garcomController = new GarcomController(garcomService)
+app.use('/api/garcons', criarGarcomRoutes(garcomController))
+// Reservas: repository -> service (usa mesas e clientes) -> controller -> rotas
+const reservaService = new ReservaService(reservaRepo, mesaRepo, clienteRepo)
+const reservaController = new ReservaController(reservaService)
+app.use('/api/reservas', criarReservaRoutes(reservaController))
+// Cozinha: repository -> service -> controller -> rotas
+const cozinhaRepo = new CozinhaRepositoryPg()
+const cozinhaService = new CozinhaService(cozinhaRepo)
+const cozinhaController = new CozinhaController(cozinhaService)
+app.use('/api/cozinha', criarCozinhaRoutes(cozinhaController))
 
 const porta = Number(process.env.PORT) || 3000
 app.listen(porta, () => console.log(`API rodando na porta ${porta}`))

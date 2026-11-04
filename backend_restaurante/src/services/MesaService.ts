@@ -1,8 +1,10 @@
 import { ErroDeNegocio } from '../errors/ErroDeNegocio.js'
 import { LOCALIZACOES, type Localizacao, type Mesa, type StatusMesa } from '../models/Mesa.js'
 import type { FiltroMesas, MesaRepository } from '../repositories/MesaRepository.js'
+import { DURACAO_RESERVA_MINUTOS } from '../config/reservas.js'
+import type { ReservaRepository } from '../repositories/ReservaRepository.js'
+import { formatarDataHora, paraData } from '../utils/datas.js'
 
-// Limites (ajuste aqui se precisar)
 const MAX_NUMERO = 999
 const MAX_CAPACIDADE = 50
 
@@ -14,10 +16,14 @@ export interface DadosMesa {
 }
 
 export class MesaService {
-  constructor(private repo: MesaRepository) {}
+  constructor(
+    private repo: MesaRepository,
+    private reservaRepo: ReservaRepository,
+  ) {}
 
   async listar(filtro: FiltroMesas): Promise<Mesa[]> {
     const mesas = await this.repo.listar(filtro)
+    await this.anexarReservasDeHoje(mesas)
     return mesas.sort((a, b) => a.numero - b.numero)
   }
 
@@ -109,6 +115,27 @@ export class MesaService {
   private exigirSemPedidoSeQuebrar(mesa: Mesa, novoStatus: StatusMesa): void {
     if (novoStatus === 'quebrada' && mesa.idPedidoAberto) {
       throw new ErroDeNegocio('Feche o pedido aberto antes de marcar a mesa como quebrada.', 409)
+    }
+  }
+
+  private async anexarReservasDeHoje(mesas: Mesa[]): Promise<void> {
+    const agora = new Date()
+    const inicio = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate())
+    const fim = new Date(inicio)
+    fim.setDate(fim.getDate() + 1)
+
+    const reservas = await this.reservaRepo.listar({
+      de: formatarDataHora(inicio),
+      ate: formatarDataHora(fim),
+    })
+    const vigentes = reservas
+      .filter((r) => r.status === 'pendente' || r.status === 'confirmada')
+      .filter((r) => paraData(r.dataHora).getTime() + DURACAO_RESERVA_MINUTOS * 60000 >= agora.getTime())
+      .sort((a, b) => a.dataHora.localeCompare(b.dataHora))
+
+    for (const mesa of mesas) {
+      const r = vigentes.find((x) => x.mesas.some((m) => m.id === mesa.id))
+      if (r) mesa.reservaHoje = { id: r.id, hora: r.dataHora.slice(11, 16), nomeCliente: r.nomeCliente }
     }
   }
 }

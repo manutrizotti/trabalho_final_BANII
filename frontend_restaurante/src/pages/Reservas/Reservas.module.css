@@ -1,0 +1,34 @@
+.barra { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+
+.select {
+  background: #000;
+  color: #fff;
+  border: 2px solid var(--cor-borda);
+  font-family: var(--fonte-texto);
+  font-size: var(--texto-busca);
+  padding: 6px 12px;
+  min-width: 280px;
+}
+
+.grade {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 22px;
+}
+
+.adicionar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 710px;
+  background: transparent;
+  color: #fff;
+  border: 2px solid var(--cor-borda);
+  font-size: var(--texto-item);
+}
+
+.mais { font-size: 80px; line-height: 1; font-weight: 100; }
+
+.erro { color: #ff6b6b; margin-bottom: 12px; }
+.vazio { padding: 24px; text-align: center; }

@@ -1,0 +1,8 @@
+.grade {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px;
+}
+
+.erro { color: #ff6b6b; margin-bottom: 12px; }
+.vazio { padding: 24px; text-align: center; }

@@ -1,0 +1,32 @@
+.card {
+  background: var(--cor-cartao);
+  color: #000;
+  min-height: 327px;
+  padding: 14px 20px 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  text-align: center;
+  font-size: var(--texto-item);
+}
+
+.furo { width: 16px; height: 16px; border-radius: 50%; background: #000; }
+
+.prato { overflow-wrap: anywhere; }
+
+.botao {
+  width: 156px;
+  min-height: 64px;
+  border: none;
+  border-radius: var(--raio);
+  color: #fff;
+  font-size: var(--texto-item);
+  line-height: 1.1;
+}
+
+.botao:disabled { opacity: 0.6; cursor: wait; }
+
+.comecar { background: var(--cor-cozinha-comecar); }
+.finalizar { background: var(--cor-cozinha-finalizar); }
+.servir { background: var(--cor-cozinha-servir); }

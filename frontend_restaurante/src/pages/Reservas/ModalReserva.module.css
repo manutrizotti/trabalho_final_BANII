@@ -1,0 +1,58 @@
+.corpo {
+  border: 1px solid #000;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.linha { display: flex; gap: 16px; }
+
+.campo {
+  background: var(--cor-campo);
+  border: none;
+  padding: 8px;
+  font-size: 18px;
+  width: 100%;
+  color: #000;
+}
+
+.desabilitado { color: #777; cursor: not-allowed; }
+
+.observacoes { height: 90px; resize: none; }
+.contador { align-self: flex-end; color: #555; }
+
+.listaMesas {
+  list-style: none;
+  max-height: 160px;
+  overflow-y: auto;
+  border: 1px solid #000;
+}
+
+.itemMesa {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid #ccc;
+}
+
+.vazio { padding: 10px; color: #555; }
+
+.invalido { outline: 1px solid #ba0000; }
+
+.erro { color: #ba0000; }
+
+.rodape { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+
+.icone {
+  width: 45px;
+  height: 45px;
+  background: #000;
+  color: #fff;
+  border: none;
+  border-radius: var(--raio-pequeno);
+  font-size: 22px;
+}
+
+.icone:disabled { opacity: 0.5; }

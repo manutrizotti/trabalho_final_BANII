@@ -44,3 +44,15 @@
   padding: 6px;
   font-size: var(--texto-item);
 }
+
+.selo {
+  display: flex;
+  flex-direction: column;
+  margin-top: 6px;
+  padding: 2px 8px;
+  border: 1px solid var(--cor-dourado-mesas);
+  border-radius: var(--raio-pequeno);
+  color: var(--cor-dourado-mesas);
+  font-size: var(--texto-normal);
+  overflow-wrap: anywhere;
+}

@@ -26,6 +26,10 @@ import { CozinhaRepositoryPg } from './repositories/postgres/CozinhaRepositoryPg
 import { CozinhaService } from './services/CozinhaService.js'
 import { CozinhaController } from './controllers/CozinhaController.js'
 import { criarCozinhaRoutes } from './routes/cozinhaRoutes.js'
+import { PedidoRepositoryPg } from './repositories/postgres/PedidoRepositoryPg.js'
+import { PedidoService } from './services/PedidoService.js'
+import { PedidoController } from './controllers/PedidoController.js'
+import { criarPedidoRoutes } from './routes/pedidoRoutes.js'
 
 const app = express()
 app.use(cors())
@@ -66,6 +70,18 @@ const cozinhaRepo = new CozinhaRepositoryPg()
 const cozinhaService = new CozinhaService(cozinhaRepo)
 const cozinhaController = new CozinhaController(cozinhaService)
 app.use('/api/cozinha', criarCozinhaRoutes(cozinhaController))
+// Pedidos
+const pedidoRepo = new PedidoRepositoryPg()
+const pedidoService = new PedidoService(
+  pedidoRepo,
+  mesaRepo,
+  garcomRepo,
+  clienteRepo,
+  reservaRepo,
+  cardapioRepo,
+)
+const pedidoController = new PedidoController(pedidoService)
+app.use('/api/pedidos', criarPedidoRoutes(pedidoController))
 
 const porta = Number(process.env.PORT) || 3000
 app.listen(porta, () => console.log(`API rodando na porta ${porta}`))

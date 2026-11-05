@@ -5,6 +5,7 @@ export type StatusMesa = 'ativa' | 'quebrada' | 'removida'
 
 export interface ReservaDoDia {
   id: string
+  idCliente: string
   hora: string // 'HH:mm'
   nomeCliente: string
 }

@@ -4,7 +4,7 @@ import type { ClienteRepository } from '../repositories/ClienteRepository.js'
 import type { MesaRepository } from '../repositories/MesaRepository.js'
 import type { FiltroReservas, ReservaRepository } from '../repositories/ReservaRepository.js'
 import { DURACAO_RESERVA_MINUTOS } from '../config/reservas.js'
-import { formatarDataHora as formatar } from '../utils/datas.js'
+import { formatarDataHora as formatar, paraData } from '../utils/datas.js'
 
 // Limites (ajuste aqui se precisar)
 const MAX_PESSOAS = 100
@@ -67,9 +67,13 @@ export class ReservaService {
     if (filtro.status) filtroRepo.status = filtro.status
 
     const reservas = await this.repo.listar(filtroRepo)
-    const agora = Date.now()
-    const distancia = (r: Reserva) => Math.abs(new Date(r.dataHora.replace(' ', 'T')).getTime() - agora)
-    return reservas.sort((a, b) => distancia(a) - distancia(b))
+
+    // vigentes e futuras primeiro (mais próximas antes); depois as passadas (mais recentes antes)
+    const limite = Date.now() - DURACAO_RESERVA_MINUTOS * 60000
+    const hora = (r: Reserva) => paraData(r.dataHora).getTime()
+    const vigentes = reservas.filter((r) => hora(r) >= limite).sort((a, b) => hora(a) - hora(b))
+    const passadas = reservas.filter((r) => hora(r) < limite).sort((a, b) => hora(b) - hora(a))
+    return [...vigentes, ...passadas]
   }
 
   async buscarPorId(id: string): Promise<Reserva> {

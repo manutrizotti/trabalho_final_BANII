@@ -135,7 +135,7 @@ export class MesaService {
 
     for (const mesa of mesas) {
       const r = vigentes.find((x) => x.mesas.some((m) => m.id === mesa.id))
-      if (r) mesa.reservaHoje = { id: r.id, hora: r.dataHora.slice(11, 16), nomeCliente: r.nomeCliente }
+            if (r) mesa.reservaHoje = { id: r.id, idCliente: r.idCliente, hora: r.dataHora.slice(11, 16), nomeCliente: r.nomeCliente }
     }
   }
 }

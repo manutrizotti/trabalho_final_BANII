@@ -6,7 +6,7 @@ export type StatusMesa = 'ativa' | 'quebrada' | 'removida'
 export interface ReservaDoDia {
   id: string
   idCliente: string
-  hora: string
+  hora: string // 'HH:mm'
   nomeCliente: string
 }
 
@@ -17,6 +17,7 @@ export class Mesa {
     public localizacao: Localizacao | null,
     public capacidade: number,
     public status: StatusMesa,
+    public idPedidoAberto: string | null, // derivado: se não for null, a mesa está ocupada
     public reservaHoje: ReservaDoDia | null = null, // preenchido pelo service
   ) {}
 }

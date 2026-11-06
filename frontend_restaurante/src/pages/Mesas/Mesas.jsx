@@ -6,6 +6,7 @@ import CardMesa from './CardMesa'
 import ModalMesa from './ModalMesa'
 import styles from './Mesas.module.css'
 import ModalNovoPedido from '../Pedidos/ModalNovoPedido'
+import ModalPedido from '../Pedidos/ModalPedido'
 
 const FILTRO_LOCALIZACAO = [
   { valor: 'todas', rotulo: 'Todas as localizações' },
@@ -16,6 +17,7 @@ const FILTRO_LOCALIZACAO = [
 
 function Mesas() {
   const [ocupando, setOcupando] = useState(null)
+  const [visualizando, setVisualizando] = useState(null)
   
   const [mesas, setMesas] = useState([])
   const [somenteLivres, setSomenteLivres] = useState(false)
@@ -88,7 +90,7 @@ function Mesas() {
   }
 
   return (
-    <PageLayout fundo="mesas.jpg">
+    <PageLayout fundo="mesas.jpg" lado="esquerda">
       <div className={styles.barra}>
         <div className={styles.busca}>
           <input
@@ -137,7 +139,7 @@ function Mesas() {
             onMenu={(mesa) => setModal({ mesa })}
             onRecuperar={recuperar}
             onOcupar={(mesa) => setOcupando(mesa)}
-            onVisualizar={() => {/* idem: levar para o pedido aberto */}}
+            onVisualizar={(mesa) => setVisualizando(mesa.idPedidoAberto)}
           />
         ))}
       </div>
@@ -172,6 +174,10 @@ function Mesas() {
             carregar()
           }}
         />
+      )}
+
+      {visualizando && (
+        <ModalPedido idPedido={visualizando} onFechar={() => setVisualizando(null)} onAlterado={carregar} />
       )}
 
       {sucesso && <ModalAviso tipo="sucesso" mensagem={sucesso} onFechar={() => setSucesso('')} />}

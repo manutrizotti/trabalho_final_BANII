@@ -56,7 +56,7 @@ function Clientes() {
   }
 
   return (
-    <PageLayout fundo="clientes.jpg">
+    <PageLayout fundo="clientes.jpg" lado="esquerda">
       <div className={styles.busca}>
         <input
           className={styles.campoBusca}

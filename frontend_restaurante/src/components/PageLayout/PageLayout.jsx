@@ -1,15 +1,20 @@
 import Navbar from '../Navbar/Navbar'
 import styles from './PageLayout.module.css'
 
-function PageLayout({ fundo, children }) {
-  const estiloFundo = fundo
+function PageLayout({ fundo, lado = 'direita', largura = '55%', posicao = 'center', children }) {
+  const estilo = fundo
     ? {
-        backgroundImage: `linear-gradient(90deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.5) 100%), url(/fundos/${fundo})`,
+        '--foto': `url(/fundos/${fundo})`,
+        '--largura': largura,
+        '--posicao': posicao,
       }
     : {}
 
   return (
-    <div className={styles.pagina} style={estiloFundo}>
+    <div
+      className={`${styles.pagina} ${fundo ? styles.comFundo : ''} ${lado === 'esquerda' ? styles.esquerda : styles.direita}`}
+      style={estilo}
+    >
       <Navbar />
       <main className={styles.conteudo}>{children}</main>
     </div>

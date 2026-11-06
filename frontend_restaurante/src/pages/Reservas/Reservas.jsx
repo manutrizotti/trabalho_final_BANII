@@ -56,7 +56,7 @@ function Reservas() {
   }
 
   return (
-    <PageLayout fundo="reservas.jpg">
+    <PageLayout fundo="reservas.jpg" lado="esquerda">
       <div className={styles.barra}>
         <select className={styles.select} value={periodo} onChange={(e) => setPeriodo(e.target.value)}>
           {PERIODOS.map((p) => (

@@ -36,7 +36,7 @@
 }
 
 .acao {
-  margin-top: 8px;
+  margin-top: auto;
   background: var(--cor-dourado-mesas);
   color: #000;
   border: none;

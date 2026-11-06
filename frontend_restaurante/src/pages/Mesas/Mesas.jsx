@@ -5,6 +5,9 @@ import { mesaService } from '../../services/mesaService'
 import CardMesa from './CardMesa'
 import ModalMesa from './ModalMesa'
 import styles from './Mesas.module.css'
+import ModalNovoPedido from '../Pedidos/ModalNovoPedido'
+import ModalPedido from '../Pedidos/ModalPedido'
+
 const FILTRO_LOCALIZACAO = [
   { valor: 'todas', rotulo: 'Todas as localizações' },
   { valor: 'salão', rotulo: 'Salão' },
@@ -13,6 +16,9 @@ const FILTRO_LOCALIZACAO = [
 ]
 
 function Mesas() {
+  const [ocupando, setOcupando] = useState(null)
+  const [visualizando, setVisualizando] = useState(null)
+  
   const [mesas, setMesas] = useState([])
   const [somenteLivres, setSomenteLivres] = useState(false)
   const [busca, setBusca] = useState('')
@@ -84,7 +90,7 @@ function Mesas() {
   }
 
   return (
-    <PageLayout fundo="mesas.jpg">
+    <PageLayout fundo="mesas.jpg" lado="esquerda">
       <div className={styles.barra}>
         <div className={styles.busca}>
           <input
@@ -126,14 +132,14 @@ function Mesas() {
           Adicionar mesa
         </button>
 
-        {mesas.map((m) => (
+      {mesas.map((m) => (
           <CardMesa
             key={m.id}
             mesa={m}
             onMenu={(mesa) => setModal({ mesa })}
             onRecuperar={recuperar}
-            onOcupar={() => {/* a abertura do pedido entra na aba Pedidos */}}
-            onVisualizar={() => {/* idem: levar para o pedido aberto */}}
+            onOcupar={(mesa) => setOcupando(mesa)}
+            onVisualizar={(mesa) => setVisualizando(mesa.idPedidoAberto)}
           />
         ))}
       </div>
@@ -156,6 +162,22 @@ function Mesas() {
           onCancelar={() => setParaExcluir(null)}
           onConfirmar={confirmarExclusao}
         />
+      )}
+
+      {ocupando && (
+        <ModalNovoPedido
+          mesa={ocupando}
+          onFechar={() => setOcupando(null)}
+          onSalvar={() => {
+            setOcupando(null)
+            mostrarSucesso('Pedido aberto com sucesso!')
+            carregar()
+          }}
+        />
+      )}
+
+      {visualizando && (
+        <ModalPedido idPedido={visualizando} onFechar={() => setVisualizando(null)} onAlterado={carregar} />
       )}
 
       {sucesso && <ModalAviso tipo="sucesso" mensagem={sucesso} onFechar={() => setSucesso('')} />}

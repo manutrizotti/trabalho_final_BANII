@@ -5,6 +5,7 @@ import { pedidoService } from '../../services/pedidoService'
 import CardPedido from './CardPedido'
 import ModalNovoPedido from './ModalNovoPedido'
 import styles from './Pedidos.module.css'
+import ModalPedido from './ModalPedido'
 
 const TIPOS = [
   { valor: 'todas', rotulo: 'Todas as categorias' },
@@ -26,6 +27,7 @@ function Pedidos() {
   const [inicio, setInicio] = useState('')
   const [fim, setFim] = useState('')
   const [erro, setErro] = useState('')
+  const [visualizando, setVisualizando] = useState(null)
 
   const [novo, setNovo] = useState(false)
   const [sucesso, setSucesso] = useState('')
@@ -81,7 +83,7 @@ function Pedidos() {
           <CardPedido
             key={p.id}
             pedido={p}
-            onAbrir={() => { /* parte 2: abrir o modal do pedido */ }}
+            onAbrir={(p) => setVisualizando(p.id)}
           />
         ))}
       </div>
@@ -89,6 +91,11 @@ function Pedidos() {
       {pedidos.length === 0 && !erro && <p className={styles.vazio}>Nenhum pedido encontrado.</p>}
 
       {novo && <ModalNovoPedido onFechar={() => setNovo(false)} onSalvar={aoSalvar} />}
+
+      {visualizando && (
+        <ModalPedido idPedido={visualizando} onFechar={() => setVisualizando(null)} onAlterado={carregar} />
+      )}
+
       {sucesso && <ModalAviso tipo="sucesso" mensagem={sucesso} onFechar={() => setSucesso('')} />}
     </PageLayout>
   )

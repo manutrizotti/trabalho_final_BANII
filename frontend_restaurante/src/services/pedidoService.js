@@ -16,4 +16,22 @@ export const pedidoService = {
   criar(dados) {
     return requisicao('/pedidos', { method: 'POST', body: JSON.stringify(dados) })
   },
+  adicionarItem(id, dados) {
+    return requisicao(`/pedidos/${id}/itens`, { method: 'POST', body: JSON.stringify(dados) })
+  },
+  removerItem(id, idItem) {
+    return requisicao(`/pedidos/${id}/itens/${idItem}`, { method: 'DELETE' })
+  },
+  fechar(id, aplicaDezPorcento) {
+    return requisicao(`/pedidos/${id}/fechar`, { method: 'POST', body: JSON.stringify({ aplicaDezPorcento }) })
+  },
+  cancelar(id) {
+    return requisicao(`/pedidos/${id}/cancelar`, { method: 'POST' })
+  },
+  pagar(id, dados) {
+    return requisicao(`/pedidos/${id}/pagamentos`, { method: 'POST', body: JSON.stringify(dados) })
+  },
+  avancarEntrega(id) {
+    return requisicao(`/pedidos/${id}/entrega`, { method: 'PATCH' })
+  },
 }

@@ -26,6 +26,7 @@ function ModalPedido({ idPedido, onFechar, onAlterado }) {
   const [erroItem, setErroItem] = useState('')
   const [confirmaCancelar, setConfirmaCancelar] = useState(false)
   const [ocupado, setOcupado] = useState(false)
+  const [confirmaFechar, setConfirmaFechar] = useState(false)
 
   useEffect(() => {
     pedidoService.buscar(idPedido).then(setPedido).catch((e) => setErro(e.message))
@@ -119,7 +120,7 @@ function ModalPedido({ idPedido, onFechar, onAlterado }) {
       <Modal titulo={`${titulo} - pedido ${pedido.id}`} onFechar={onFechar}>
         <div className={styles.corpo}>
           <p className={styles.info}>
-            Estado: <strong>{pedido.status}</strong>
+            Estado: <strong>{pedido.status === 'fechado' ? (pedido.quitado ? 'fechado e pago' : 'fechado, aguardando pagamento') : pedido.status}</strong>
             {pedido.nomeCliente && <> · Cliente: {pedido.nomeCliente}</>}
             {pedido.nomeGarcom && <> · Garçom: {pedido.nomeGarcom}</>}
           </p>
@@ -252,7 +253,7 @@ function ModalPedido({ idPedido, onFechar, onAlterado }) {
                 <button
                   className={styles.primario}
                   disabled={ocupado}
-                  onClick={() => executar(() => pedidoService.fechar(idPedido, salao && dez))}
+                  onClick={() => setConfirmaFechar(true)}
                 >
                   Fechar pedido
                 </button>
@@ -301,6 +302,18 @@ function ModalPedido({ idPedido, onFechar, onAlterado }) {
           onConfirmar={async () => {
             setConfirmaCancelar(false)
             await executar(() => pedidoService.cancelar(idPedido))
+          }}
+        />
+      )}
+
+      {confirmaFechar && (
+        <ModalAviso
+          tipo="confirmar"
+          mensagem={`Fechar o pedido? Total: ${moeda(dez ? totalComDez : pedido.valorTotal)}. Depois de fechado, não aceita mais itens.`}
+          onCancelar={() => setConfirmaFechar(false)}
+          onConfirmar={async () => {
+            setConfirmaFechar(false)
+            await executar(() => pedidoService.fechar(idPedido, salao && dez))
           }}
         />
       )}

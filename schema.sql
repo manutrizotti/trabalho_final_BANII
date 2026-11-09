@@ -616,6 +616,10 @@ END; $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION fn_cancelar_pedido(p_id_pedido INTEGER) RETURNS VOID AS $$
 BEGIN
+    IF EXISTS (SELECT 1 FROM item_pedido WHERE id_pedido = p_id_pedido
+                AND status_cozinha <> 'aguardando preparo') THEN
+        RAISE EXCEPTION 'A cozinha já começou itens deste pedido, então ele não pode ser cancelado.';
+    END IF;
     UPDATE pedido SET status_pedido = 'cancelado' WHERE id_pedido = p_id_pedido AND status_pedido = 'aberto';
     IF NOT FOUND THEN RAISE EXCEPTION 'Pedido % não existe ou não está aberto.', p_id_pedido; END IF;
     PERFORM fn_finalizar_reserva_se_ultimo(p_id_pedido);

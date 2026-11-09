@@ -125,7 +125,7 @@ export class PedidoService {
     const idGarcom = texto(d.idGarcom)
     if (!idGarcom) throw new ErroDeNegocio('Selecione o garçom.')
     let idCliente: string | null = texto(d.idCliente) || null // opcional no salão
-    const idReserva = texto(d.idReserva) || null
+    let idReserva = texto(d.idReserva) || null
 
     // mesa
     const mesa = await this.mesaRepo.buscarPorId(idMesa)
@@ -137,6 +137,20 @@ export class PedidoService {
     const garcom = await this.garcomRepo.buscarPorId(idGarcom)
     if (!garcom) throw new ErroDeNegocio('Garçom não encontrado.', 404)
     if (garcom.status !== 'ativo') throw new ErroDeNegocio('O garçom selecionado não está ativo.', 409)
+
+
+    if (!idReserva) {
+      const proxima = await this.reservaProximaDaMesa(idMesa)
+      if (proxima) {
+        if (idCliente !== proxima.idCliente) {
+          throw new ErroDeNegocio(
+            `Mesa reservada para as ${proxima.dataHora.slice(11, 16)} em nome de ${proxima.nomeCliente}. Selecione esse cliente ou use outra mesa.`,
+            409,
+          )
+        }
+        idReserva = proxima.id // é o cliente da reserva: vincula sozinho
+      }
+    }
 
     // reserva vinculada ou trava da mesa
     let reservaStatus: string | null = null
@@ -157,8 +171,6 @@ export class PedidoService {
       }
       idCliente = reserva.idCliente // o cliente é o da reserva
       reservaStatus = reserva.status
-    } else {
-      await this.exigirMesaSemReservaProxima(idMesa)
     }
 
     if (idCliente && !(await this.clienteRepo.buscarPorId(idCliente))) {
@@ -206,24 +218,16 @@ export class PedidoService {
     return pedido.id
   }
 
-  /** Bloqueia a abertura se a mesa tem reserva pendente/confirmada dentro da janela de 2h30. */
-  private async exigirMesaSemReservaProxima(idMesa: string): Promise<void> {
+  private async reservaProximaDaMesa(idMesa: string) {
     const agora = Date.now()
     const reservas = await this.reservaRepo.listar({
       de: formatarDataHora(new Date(agora - JANELA_MS)),
       ate: formatarDataHora(new Date(agora + JANELA_MS)),
     })
-    const conflito = reservas
+    return reservas
       .filter((r) => r.status === 'pendente' || r.status === 'confirmada')
       .filter((r) => r.mesas.some((m) => m.id === idMesa))
       .sort((a, b) => a.dataHora.localeCompare(b.dataHora))[0]
-
-    if (conflito) {
-      throw new ErroDeNegocio(
-        `Mesa reservada para as ${conflito.dataHora.slice(11, 16)}. Cancele a reserva ou use outra mesa.`,
-        409,
-      )
-    }
   }
 
   // ----- itens -----
@@ -284,6 +288,12 @@ export class PedidoService {
 
   async cancelar(idPedido: string): Promise<PedidoDetalhado> {
     const pedido = await this.exigirAberto(idPedido)
+    if (pedido.itens.some((i) => i.statusCozinha !== 'aguardando preparo')) {
+      throw new ErroDeNegocio(
+        'A cozinha já começou itens deste pedido, então ele não pode ser cancelado. Feche o pedido para pagar o que foi consumido.',
+        409,
+      )
+    }
     if (!(await this.repo.cancelar(idPedido))) {
       throw new ErroDeNegocio('O pedido não está mais aberto. Atualize a tela.', 409)
     }

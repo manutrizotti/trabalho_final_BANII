@@ -79,6 +79,26 @@ function Cardapio() {
     }
   }
 
+  async function enviarImagem(item, arquivo) {
+    try {
+      setErro('')
+      await cardapioService.enviarImagem(item.id, arquivo)
+      carregar()
+    } catch (e) {
+      setErro(e.message)
+    }
+  }
+
+  async function removerImagem(item) {
+    try {
+      setErro('')
+      await cardapioService.removerImagem(item.id)
+      carregar()
+    } catch (e) {
+      setErro(e.message)
+    }
+  }
+
   return (
     <PageLayout fundo="cardapio.jpg">
       <div className={styles.barra}>
@@ -111,7 +131,14 @@ function Cardapio() {
 
       <div className={styles.lista}>
         {itens.map((item) => (
-          <CardItem key={item.id} item={item} onEditar={(i) => setModal({ item: i })} />
+          <CardItem
+            key={item.id}
+            item={item}
+            onEditar={(i) => setModal({ item: i })}
+            onImagem={enviarImagem}
+            onRemoverImagem={removerImagem}
+            onErro={setErro}
+          />
         ))}
         {itens.length === 0 && !erro && <p className={styles.vazio}>Nenhum item encontrado.</p>}
       </div>

@@ -30,10 +30,12 @@ import { PedidoRepositoryPg } from './repositories/postgres/PedidoRepositoryPg.j
 import { PedidoService } from './services/PedidoService.js'
 import { PedidoController } from './controllers/PedidoController.js'
 import { criarPedidoRoutes } from './routes/pedidoRoutes.js'
+import { ArmazenamentoImagens, PASTA_UPLOADS } from './storage/ArmazenamentoImagens.js'
 
 const app = express()
 app.use(cors())
 app.use(express.json())
+app.use('/uploads', express.static(PASTA_UPLOADS))
 
 app.get('/api/saude', (_req, res) => {
   res.json({ ok: true })
@@ -41,7 +43,7 @@ app.get('/api/saude', (_req, res) => {
 
 // Cardápio: repository -> service -> controller -> rotas
 const cardapioRepo = new ItemCardapioRepositoryPg()
-const cardapioService = new ItemCardapioService(cardapioRepo)
+const cardapioService = new ItemCardapioService(cardapioRepo, new ArmazenamentoImagens())
 const cardapioController = new ItemCardapioController(cardapioService)
 app.use('/api/cardapio', criarCardapioRoutes(cardapioController))
 // Exceção reserva

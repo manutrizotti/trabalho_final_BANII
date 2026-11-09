@@ -19,6 +19,7 @@ export class ItemCardapio {
     public tempoPreparoMinutos: number,
     public disponivel: boolean,
     public ehCombo: boolean,
+    public imagem: string | null = null, 
   ) {}
 }
 

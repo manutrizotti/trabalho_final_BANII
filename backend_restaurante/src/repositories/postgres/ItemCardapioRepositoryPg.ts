@@ -18,6 +18,7 @@ function paraModelo(linha: any): ItemCardapio {
     linha.tempo_preparo_minutos ?? 0,
     linha.disponibilidade,
     linha.eh_combo,
+    linha.imagem ?? null,
   )
 }
 
@@ -115,5 +116,9 @@ export class ItemCardapioRepositoryPg implements ItemCardapioRepository {
 
   async removerDaComposicao(idCombo: string, idItem: string): Promise<void> {
     await pool.query('DELETE FROM composicao WHERE id_combo = $1 AND id_item = $2', [idCombo, idItem])
+  }
+
+  async atualizarImagem(id: string, imagem: string | null): Promise<void> {
+    await pool.query('UPDATE itens_cardapio SET imagem = $2 WHERE id_cardapio = $1', [id, imagem])
   }
 }

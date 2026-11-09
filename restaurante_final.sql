@@ -48,6 +48,8 @@ CREATE TABLE itens_cardapio (
     eh_combo BOOLEAN NOT NULL DEFAULT FALSE
 );
 
+ALTER TABLE itens_cardapio ADD COLUMN imagem VARCHAR(255);
+
 CREATE TABLE composicao (
     id_combo INTEGER REFERENCES itens_cardapio(id_cardapio) ON DELETE CASCADE,
     id_item INTEGER REFERENCES itens_cardapio(id_cardapio) ON DELETE CASCADE,

@@ -128,5 +128,21 @@ export class ItemCardapioController {
     } catch (erro) {
       responderErro(res, erro)
     }
-  }  
+  }
+  
+  definirImagem = async (req: Request, res: Response) => {
+    try {
+      res.json(await this.service.definirImagem(String(req.params.id), req.file))
+    } catch (erro) {
+      responderErro(res, erro)
+    }
+  }
+
+  removerImagem = async (req: Request, res: Response) => {
+    try {
+      res.json(await this.service.removerImagem(String(req.params.id)))
+    } catch (erro) {
+      responderErro(res, erro)
+    }
+  }
 }

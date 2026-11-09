@@ -52,13 +52,47 @@
 }
 
 .foto {
+  position: relative;
   width: 360px;
-  align-self: stretch;
+  align-self: stretch;   /* acompanha a altura do card, sem definir ela */
+  flex-shrink: 0;
   border: 1px solid var(--cor-borda);
+  overflow: hidden;
+}
+
+.areaFoto {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28px;
+  padding: 0;
+}
+
+.areaFoto img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.removerFoto {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 30px;
+  height: 30px;
+  background: var(--cor-perigo);
+  color: #fff;
+  border: none;
+  border-radius: var(--raio-pequeno);
 }
 
 @media (max-width: 1100px) {

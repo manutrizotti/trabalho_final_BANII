@@ -1,4 +1,5 @@
-const BASE = 'http://localhost:3000/api'
+export const BASE = 'http://localhost:3000/api'
+export const BASE_ARQUIVOS = 'http://localhost:3000'
 
 export async function requisicao(caminho, opcoes = {}) {
   const resposta = await fetch(`${BASE}${caminho}`, {

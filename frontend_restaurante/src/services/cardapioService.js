@@ -1,4 +1,4 @@
-import { requisicao } from './api'
+import { BASE, requisicao } from './api'
 
 export const cardapioService = {
   listar({ categoria, disponivel, nome } = {}) {
@@ -27,5 +27,17 @@ export const cardapioService = {
       method: 'PUT',
       body: JSON.stringify({ itens }),
     })
+  },
+  async enviarImagem(id, arquivo) {
+    const form = new FormData()
+    form.append('imagem', arquivo)
+    // sem Content-Type: o navegador define o multipart sozinho
+    const resposta = await fetch(`${BASE}/cardapio/${id}/imagem`, { method: 'POST', body: form })
+    const dados = await resposta.json().catch(() => null)
+    if (!resposta.ok) throw new Error(dados?.erro || 'Erro ao enviar a imagem.')
+    return dados
+  },
+  removerImagem(id) {
+    return requisicao(`/cardapio/${id}/imagem`, { method: 'DELETE' })
   },
 }

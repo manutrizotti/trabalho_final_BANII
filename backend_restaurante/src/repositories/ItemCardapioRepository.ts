@@ -34,6 +34,7 @@ export interface ItemCardapioRepository {
   inativar(id: string): Promise<void>
   excluir(id: string): Promise<void>
 
+  atualizarImagem(id: string, imagem: string | null): Promise<void>
   listarComposicao(idCombo: string): Promise<ItemComposicao[]>
   adicionarNaComposicao(idCombo: string, idItem: string, quantidade: number): Promise<void>
   atualizarQuantidadeNaComposicao(idCombo: string, idItem: string, quantidade: number): Promise<void>

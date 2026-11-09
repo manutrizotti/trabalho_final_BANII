@@ -1,6 +1,7 @@
 import { ErroDeNegocio } from '../errors/ErroDeNegocio.js'
 import { CATEGORIAS, type Categoria, type ItemCardapio, type ItemComposicao } from '../models/ItemCardapio.js'
 import type { FiltroItens, ItemCardapioRepository } from '../repositories/ItemCardapioRepository.js'
+import type { ArmazenamentoImagens } from '../storage/ArmazenamentoImagens.js'
 
 // Limites (ajuste aqui se precisar)
 const MAX_CODIGO = 10
@@ -9,6 +10,18 @@ const MAX_DESCRICAO = 300
 const MAX_PRECO = 9999.99
 const MAX_TEMPO = 240
 const MAX_QTD_NO_COMBO = 99
+const MAX_IMAGEM_BYTES = 2 * 1024 * 1024
+const TIPOS_IMAGEM: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+}
+
+export interface ArquivoEnviado {
+  buffer: Buffer
+  mimetype: string
+  size: number
+}
 
 export interface DadosItem {
   codigo?: string
@@ -23,7 +36,10 @@ export interface DadosItem {
 }
 
 export class ItemCardapioService {
-  constructor(private repo: ItemCardapioRepository) {}
+  constructor(
+    private repo: ItemCardapioRepository,
+    private imagens: ArmazenamentoImagens,
+  ) {}
 
   async listar(filtro: FiltroItens): Promise<ItemCardapio[]> {
     const itens = await this.repo.listar(filtro)
@@ -93,15 +109,36 @@ export class ItemCardapioService {
     return atualizado
   }
 
-  /** Se o item já foi vendido, apenas inativa. Retorna true se inativou. */
+    /** Se o item já foi vendido, apenas inativa. Retorna true se inativou. */
   async excluir(id: string): Promise<{ inativado: boolean }> {
-    await this.buscarPorId(id)
+    const item = await this.buscarPorId(id)
     if (await this.repo.temHistoricoDeVendas(id)) {
       await this.repo.inativar(id)
       return { inativado: true }
     }
     await this.repo.excluir(id)
+    await this.imagens.remover(item.imagem)
     return { inativado: false }
+  }
+
+  async definirImagem(id: string, arquivo?: ArquivoEnviado): Promise<ItemCardapio> {
+    const item = await this.buscarPorId(id)
+    if (!arquivo) throw new ErroDeNegocio('Selecione uma imagem.')
+    const extensao = TIPOS_IMAGEM[arquivo.mimetype]
+    if (!extensao) throw new ErroDeNegocio('A imagem deve ser jpg, png ou webp.')
+    if (arquivo.size > MAX_IMAGEM_BYTES) throw new ErroDeNegocio('A imagem deve ter no máximo 2 MB.')
+
+    const nome = await this.imagens.salvar(arquivo.buffer, extensao)
+    await this.repo.atualizarImagem(id, nome)
+    await this.imagens.remover(item.imagem) // apaga a foto anterior
+    return this.buscarPorId(id)
+  }
+
+  async removerImagem(id: string): Promise<ItemCardapio> {
+    const item = await this.buscarPorId(id)
+    await this.repo.atualizarImagem(id, null)
+    await this.imagens.remover(item.imagem)
+    return this.buscarPorId(id)
   }
 
   // ----- composição de combos -----

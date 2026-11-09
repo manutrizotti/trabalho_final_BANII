@@ -1,12 +1,17 @@
-import { pool } from '../../db/connection.js'
-import { Pedido, type ItemPedido, type Pagamento, type StatusEntrega } from '../../models/Pedido.js'
+import { chamar, pool } from '../../db/connection.js'
+import {
+  Pedido,
+  type FormaPagamento,
+  type ItemPedido,
+  type Pagamento,
+  type StatusEntrega,
+} from '../../models/Pedido.js'
 import type {
   FiltroPedidos,
   NovoItemPedido,
   NovoPedido,
   PedidoRepository,
 } from '../PedidoRepository.js'
-import type { FormaPagamento } from '../../models/Pedido.js'
 
 const SELECT_PEDIDO = `
   SELECT p.id_pedido, p.tipo, p.status_pedido, p.pagou_dez_porcento, p.valor_total,
@@ -43,29 +48,21 @@ function paraModelo(l: any): Pedido {
 }
 
 export class PedidoRepositoryPg implements PedidoRepository {
+  // usa fn_listar_pedidos (versão com TIMESTAMP, veja patch_fn_listar_pedidos.sql)
   async listar(filtro: FiltroPedidos): Promise<Pedido[]> {
-    const condicoes: string[] = []
-    const params: unknown[] = []
-
-    if (filtro.tipo) {
-      params.push(filtro.tipo === 'salao' ? 1 : 2)
-      condicoes.push(`p.tipo = $${params.length}`)
-    }
-    if (filtro.status) {
-      params.push(filtro.status)
-      condicoes.push(`p.status_pedido = $${params.length}`)
-    }
-    if (filtro.de) {
-      params.push(filtro.de)
-      condicoes.push(`p.data_hora_abertura >= $${params.length}::timestamp`)
-    }
-    if (filtro.ate) {
-      params.push(filtro.ate)
-      condicoes.push(`p.data_hora_abertura < $${params.length}::timestamp`)
-    }
-
-    const where = condicoes.length ? `WHERE ${condicoes.join(' AND ')}` : ''
-    const { rows } = await pool.query(`${SELECT_PEDIDO} ${where} ORDER BY p.id_pedido DESC`, params)
+    const { rows } = await chamar(
+      `SELECT id_pedido, tipo, status_pedido, pagou_dez_porcento, valor_total,
+              id_cliente, nome_cliente, id_reserva, endereco_entrega, taxa_entrega, status_entrega,
+              to_char(data_hora_abertura, 'YYYY-MM-DD HH24:MI:SS') AS data_hora_abertura,
+              id_mesa, numero_mesa, id_garcom, nome_garcom
+         FROM fn_listar_pedidos($1, $2, $3, $4)`,
+      [
+        filtro.tipo ? (filtro.tipo === 'salao' ? 1 : 2) : null,
+        filtro.status ?? null,
+        filtro.de ?? null,
+        filtro.ate ?? null,
+      ],
+    )
     return rows.map(paraModelo)
   }
 
@@ -107,30 +104,22 @@ export class PedidoRepositoryPg implements PedidoRepository {
   }
 
   async inserir(d: NovoPedido): Promise<Pedido> {
-    const { rows } = await pool.query(
-      `INSERT INTO pedido (tipo, id_cliente, id_mesa, id_garcom, id_reserva,
-                           endereco_entrega, taxa_entrega, status_entrega)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id_pedido`,
-      [
-        d.tipo === 'salao' ? 1 : 2,
-        d.idCliente,
-        d.idMesa,
-        d.idGarcom,
-        d.idReserva,
-        d.endereco,
-        d.taxaEntrega,
-        d.tipo === 'delivery' ? 'preparando' : null,
-      ],
-    )
-    return (await this.buscarPorId(String(rows[0].id_pedido)))!
+    const { rows } =
+      d.tipo === 'salao'
+        ? await chamar('SELECT fn_abrir_pedido_salao($1, $2, $3, $4) AS id', [
+            d.idMesa, d.idGarcom, d.idCliente, d.idReserva,
+          ])
+        : await chamar('SELECT fn_abrir_pedido_delivery($1, $2, $3) AS id', [
+            d.idCliente, d.endereco, d.taxaEntrega,
+          ])
+    return (await this.buscarPorId(String(rows[0].id)))!
   }
 
+  // o preço é copiado do cardápio dentro da função (valorUnitario não é necessário)
   async inserirItem(idPedido: string, d: NovoItemPedido): Promise<void> {
-    await pool.query(
-      `INSERT INTO item_pedido (id_pedido, id_cardapio, quantidade, valor_unitario, observacoes)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [idPedido, d.idCardapio, d.quantidade, d.valorUnitario, d.observacoes || null],
-    )
+    await chamar('SELECT fn_inserir_item_pedido($1, $2, $3, $4)', [
+      idPedido, d.idCardapio, d.quantidade, d.observacoes || null,
+    ])
   }
 
   async buscarItem(idPedido: string, idItem: string): Promise<ItemPedido | null> {
@@ -155,45 +144,33 @@ export class PedidoRepositoryPg implements PedidoRepository {
   }
 
   async removerItem(idItem: string): Promise<void> {
-    await pool.query('DELETE FROM item_pedido WHERE id_item_pedido = $1', [idItem])
+    await chamar('SELECT fn_remover_item_pedido($1)', [idItem])
   }
 
-  async atualizarTotal(idPedido: string, total: number): Promise<void> {
-    await pool.query('UPDATE pedido SET valor_total = $2 WHERE id_pedido = $1', [idPedido, total])
+  // a função recalcula (itens + taxa) sozinha; o valor recebido não é usado
+  async atualizarTotal(idPedido: string, _total: number): Promise<void> {
+    await chamar('SELECT fn_recalcular_total($1)', [idPedido])
   }
 
-  async fechar(idPedido: string, pagouDezPorcento: boolean, total: number): Promise<boolean> {
-    const r = await pool.query(
-      `UPDATE pedido SET status_pedido = 'fechado', pagou_dez_porcento = $2, valor_total = $3
-        WHERE id_pedido = $1 AND status_pedido = 'aberto'`,
-      [idPedido, pagouDezPorcento, total],
-    )
-    return r.rowCount === 1
+  // a função confere se está aberto, calcula o total e aplica os 10% (só no salão)
+  async fechar(idPedido: string, pagouDezPorcento: boolean, _total: number): Promise<boolean> {
+    await chamar('SELECT fn_fechar_pedido($1, $2)', [idPedido, pagouDezPorcento])
+    return true
   }
 
   async cancelar(idPedido: string): Promise<boolean> {
-    const r = await pool.query(
-      `UPDATE pedido SET status_pedido = 'cancelado'
-        WHERE id_pedido = $1 AND status_pedido = 'aberto'`,
-      [idPedido],
-    )
-    return r.rowCount === 1
+    await chamar('SELECT fn_cancelar_pedido($1)', [idPedido])
+    return true
   }
 
-  async alterarStatusEntrega(idPedido: string, de: StatusEntrega, para: StatusEntrega): Promise<boolean> {
-    const r = await pool.query(
-      'UPDATE pedido SET status_entrega = $3 WHERE id_pedido = $1 AND status_entrega = $2',
-      [idPedido, de, para],
-    )
-    return r.rowCount === 1
+  // a função dá sempre o próximo passo da entrega
+  async alterarStatusEntrega(idPedido: string, _de: StatusEntrega, _para: StatusEntrega): Promise<boolean> {
+    await chamar('SELECT fn_avancar_entrega($1)', [idPedido])
+    return true
   }
 
   async inserirPagamento(idPedido: string, forma: FormaPagamento, valor: number): Promise<void> {
-    await pool.query(
-      `INSERT INTO conta (id_pedido, id_pagamento, valor_atribuido)
-       VALUES ($1, (SELECT id_pagamento FROM forma_pagamento WHERE descricao = $2), $3)`,
-      [idPedido, forma, valor],
-    )
+    await chamar('SELECT fn_registrar_pagamento($1, $2, $3)', [idPedido, forma, valor])
   }
 
   async reservaTemPedidoAberto(idReserva: string): Promise<boolean> {

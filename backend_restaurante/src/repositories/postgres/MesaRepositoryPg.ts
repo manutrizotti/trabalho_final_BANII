@@ -1,12 +1,12 @@
-import { pool } from '../../db/connection.js'
+import { chamar, pool } from '../../db/connection.js'
 import { Mesa } from '../../models/Mesa.js'
+import type { StatusMesa } from '../../models/Mesa.js'
 import type {
   AtualizacaoMesa,
   FiltroMesas,
   MesaRepository,
   NovaMesa,
 } from '../MesaRepository.js'
-import type { StatusMesa } from '../../models/Mesa.js'
 
 const SELECT_MESA = `
   SELECT m.*,
@@ -28,25 +28,11 @@ function paraModelo(l: any): Mesa {
 
 export class MesaRepositoryPg implements MesaRepository {
   async listar(filtro: FiltroMesas): Promise<Mesa[]> {
-    const condicoes: string[] = [`m.status_mesa <> 'removida'`]
-    const params: unknown[] = []
-
-    if (filtro.busca) {
-      params.push(`%${filtro.busca}%`)
-      condicoes.push(`m.numero_mesa::text LIKE $${params.length}`)
-    }
-    if (filtro.apenasLivres) {
-      condicoes.push(`m.status_mesa = 'ativa'`)
-      condicoes.push(
-        `NOT EXISTS (SELECT 1 FROM pedido p WHERE p.id_mesa = m.id_mesa AND p.status_pedido = 'aberto')`,
-      )
-    }
-    if (filtro.localizacao) {
-      params.push(filtro.localizacao)
-      condicoes.push(`m.localizacao = $${params.length}`)
-    }
-
-    const { rows } = await pool.query(`${SELECT_MESA} WHERE ${condicoes.join(' AND ')}`, params)
+    const { rows } = await chamar('SELECT * FROM fn_listar_mesas($1, $2, $3)', [
+      filtro.busca ?? null,
+      filtro.apenasLivres ?? false,
+      filtro.localizacao ?? null,
+    ])
     return rows.map(paraModelo)
   }
 
@@ -61,25 +47,24 @@ export class MesaRepositoryPg implements MesaRepository {
   }
 
   async inserir(d: NovaMesa): Promise<Mesa> {
-    const { rows } = await pool.query(
-      `INSERT INTO mesa (numero_mesa, localizacao, capacidade_pessoas)
-       VALUES ($1, $2, $3) RETURNING id_mesa`,
-      [d.numero, d.localizacao, d.capacidade],
-    )
-    return (await this.buscarPorId(String(rows[0].id_mesa)))!
+    const { rows } = await chamar('SELECT fn_inserir_mesa($1, $2, $3) AS id', [
+      d.numero, d.localizacao, d.capacidade,
+    ])
+    return (await this.buscarPorId(String(rows[0].id)))!
   }
 
   async atualizar(id: string, d: AtualizacaoMesa): Promise<Mesa | null> {
-    const { rows } = await pool.query(
-      `UPDATE mesa SET localizacao = $2, capacidade_pessoas = $3, status_mesa = $4
-        WHERE id_mesa = $1 RETURNING id_mesa`,
-      [id, d.localizacao, d.capacidade, d.status],
-    )
-    return rows[0] ? this.buscarPorId(id) : null
+    await chamar('SELECT fn_atualizar_mesa($1, $2, $3, $4)', [id, d.localizacao, d.capacidade, d.status])
+    return this.buscarPorId(id)
   }
 
   async alterarStatus(id: string, status: StatusMesa): Promise<void> {
-    await pool.query('UPDATE mesa SET status_mesa = $2 WHERE id_mesa = $1', [id, status])
+    if (status === 'removida') {
+      await chamar('SELECT fn_remover_mesa($1)', [id])
+      return
+    }
+    const mesa = await this.buscarPorId(id)
+    if (mesa) await chamar('SELECT fn_atualizar_mesa($1, $2, $3, $4)', [id, mesa.localizacao, mesa.capacidade, status])
   }
 
   async temHistorico(id: string): Promise<boolean> {
@@ -93,7 +78,8 @@ export class MesaRepositoryPg implements MesaRepository {
     return rows.length > 0
   }
 
+  // fn_remover_mesa apaga se não houver histórico (o service só chama aqui nesse caso)
   async excluir(id: string): Promise<void> {
-    await pool.query('DELETE FROM mesa WHERE id_mesa = $1', [id])
+    await chamar('SELECT fn_remover_mesa($1)', [id])
   }
 }

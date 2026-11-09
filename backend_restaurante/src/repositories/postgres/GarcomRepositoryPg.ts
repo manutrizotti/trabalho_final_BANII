@@ -1,4 +1,4 @@
-import { pool } from '../../db/connection.js'
+import { chamar, pool } from '../../db/connection.js'
 import { Garcom } from '../../models/Garcom.js'
 import type {
   AtualizacaoGarcom,
@@ -7,11 +7,9 @@ import type {
   NovoGarcom,
 } from '../GarcomRepository.js'
 
-const SELECT_GARCOM = `
-  SELECT id_garcom, codigo_garcom, cpf, nome,
+const COLUNAS = `id_garcom, codigo_garcom, cpf, nome,
          to_char(data_admissao, 'YYYY-MM-DD') AS data_admissao,
-         percentual_comissao, status
-    FROM garcom`
+         percentual_comissao, status`
 
 function paraModelo(l: any): Garcom {
   return new Garcom(
@@ -27,54 +25,39 @@ function paraModelo(l: any): Garcom {
 
 export class GarcomRepositoryPg implements GarcomRepository {
   async listar(filtro: FiltroGarcons): Promise<Garcom[]> {
-    const condicoes: string[] = []
-    const params: unknown[] = []
-
-    if (filtro.status) {
-      params.push(filtro.status)
-      condicoes.push(`status = $${params.length}`)
-    }
-    if (filtro.nome) {
-      params.push(`%${filtro.nome}%`)
-      condicoes.push(`nome ILIKE $${params.length}`)
-    }
-
-    const where = condicoes.length ? `WHERE ${condicoes.join(' AND ')}` : ''
-    const { rows } = await pool.query(`${SELECT_GARCOM} ${where}`, params)
+    const { rows } = await chamar(`SELECT ${COLUNAS} FROM fn_listar_garcons($1, $2)`, [
+      filtro.status ?? null,
+      filtro.nome ?? null,
+    ])
     return rows.map(paraModelo)
   }
 
   async buscarPorId(id: string): Promise<Garcom | null> {
-    const { rows } = await pool.query(`${SELECT_GARCOM} WHERE id_garcom = $1`, [id])
+    const { rows } = await pool.query(`SELECT ${COLUNAS} FROM garcom WHERE id_garcom = $1`, [id])
     return rows[0] ? paraModelo(rows[0]) : null
   }
 
   async buscarPorCodigo(codigo: string): Promise<Garcom | null> {
-    const { rows } = await pool.query(`${SELECT_GARCOM} WHERE codigo_garcom = $1`, [codigo])
+    const { rows } = await pool.query(`SELECT ${COLUNAS} FROM garcom WHERE codigo_garcom = $1`, [codigo])
     return rows[0] ? paraModelo(rows[0]) : null
   }
 
   async buscarPorCpf(cpf: string): Promise<Garcom | null> {
-    const { rows } = await pool.query(`${SELECT_GARCOM} WHERE cpf = $1`, [cpf])
+    const { rows } = await pool.query(`SELECT ${COLUNAS} FROM garcom WHERE cpf = $1`, [cpf])
     return rows[0] ? paraModelo(rows[0]) : null
   }
 
+  // a data de admissão é a de hoje (padrão da tabela), igual ao que o service envia
   async inserir(d: NovoGarcom): Promise<Garcom> {
-    const { rows } = await pool.query(
-      `INSERT INTO garcom (codigo_garcom, cpf, nome, data_admissao, percentual_comissao)
-       VALUES ($1, $2, $3, $4, $5) RETURNING id_garcom`,
-      [d.codigo, d.cpf, d.nome, d.dataAdmissao, d.comissao],
-    )
-    return (await this.buscarPorId(String(rows[0].id_garcom)))!
+    const { rows } = await chamar('SELECT fn_inserir_garcom($1, $2, $3, $4) AS id', [
+      d.codigo, d.cpf, d.nome, d.comissao,
+    ])
+    return (await this.buscarPorId(String(rows[0].id)))!
   }
 
   async atualizar(id: string, d: AtualizacaoGarcom): Promise<Garcom | null> {
-    const { rows } = await pool.query(
-      `UPDATE garcom SET nome = $2, percentual_comissao = $3, status = $4
-        WHERE id_garcom = $1 RETURNING id_garcom`,
-      [id, d.nome, d.comissao, d.status],
-    )
-    return rows[0] ? this.buscarPorId(id) : null
+    await chamar('SELECT fn_atualizar_garcom($1, $2, $3, $4)', [id, d.nome, d.comissao, d.status])
+    return this.buscarPorId(id)
   }
 
   async temPedidoAberto(id: string): Promise<boolean> {

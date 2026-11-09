@@ -1,4 +1,4 @@
-import { pool } from '../../db/connection.js'
+import { chamar, pool } from '../../db/connection.js'
 import { Cliente } from '../../models/Cliente.js'
 import type {
   AtualizacaoCliente,
@@ -13,13 +13,7 @@ function paraModelo(l: any): Cliente {
 
 export class ClienteRepositoryPg implements ClienteRepository {
   async listar(filtro: FiltroClientes): Promise<Cliente[]> {
-    const params: unknown[] = []
-    let where = ''
-    if (filtro.nome) {
-      params.push(`%${filtro.nome}%`)
-      where = `WHERE nome_cliente ILIKE $1`
-    }
-    const { rows } = await pool.query(`SELECT * FROM cliente ${where}`, params)
+    const { rows } = await chamar('SELECT * FROM fn_listar_clientes($1)', [filtro.nome ?? null])
     return rows.map(paraModelo)
   }
 
@@ -34,19 +28,13 @@ export class ClienteRepositoryPg implements ClienteRepository {
   }
 
   async inserir(d: NovoCliente): Promise<Cliente> {
-    const { rows } = await pool.query(
-      'INSERT INTO cliente (nome_cliente, telefone) VALUES ($1, $2) RETURNING *',
-      [d.nome, d.telefone],
-    )
-    return paraModelo(rows[0])
+    const { rows } = await chamar('SELECT fn_inserir_cliente($1, $2) AS id', [d.nome, d.telefone])
+    return (await this.buscarPorId(String(rows[0].id)))!
   }
 
   async atualizar(id: string, d: AtualizacaoCliente): Promise<Cliente | null> {
-    const { rows } = await pool.query(
-      'UPDATE cliente SET nome_cliente = $2, telefone = $3 WHERE id_cliente = $1 RETURNING *',
-      [id, d.nome, d.telefone],
-    )
-    return rows[0] ? paraModelo(rows[0]) : null
+    await chamar('SELECT fn_atualizar_cliente($1, $2, $3)', [id, d.nome, d.telefone])
+    return this.buscarPorId(id)
   }
 
   async temHistorico(id: string): Promise<boolean> {
@@ -61,6 +49,6 @@ export class ClienteRepositoryPg implements ClienteRepository {
   }
 
   async excluir(id: string): Promise<void> {
-    await pool.query('DELETE FROM cliente WHERE id_cliente = $1', [id])
+    await chamar('SELECT fn_excluir_cliente($1)', [id])
   }
 }

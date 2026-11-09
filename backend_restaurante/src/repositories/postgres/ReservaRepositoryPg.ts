@@ -1,4 +1,4 @@
-import { pool } from '../../db/connection.js'
+import { chamar, pool } from '../../db/connection.js'
 import { Reserva } from '../../models/Reserva.js'
 import type {
   AtualizacaoReserva,
@@ -34,24 +34,13 @@ function paraModelo(l: any): Reserva {
 
 export class ReservaRepositoryPg implements ReservaRepository {
   async listar(filtro: FiltroReservas): Promise<Reserva[]> {
-    const condicoes: string[] = []
-    const params: unknown[] = []
-
-    if (filtro.status) {
-      params.push(filtro.status)
-      condicoes.push(`r.status = $${params.length}`)
-    }
-    if (filtro.de) {
-      params.push(filtro.de)
-      condicoes.push(`r.data_hora >= $${params.length}::timestamp`)
-    }
-    if (filtro.ate) {
-      params.push(filtro.ate)
-      condicoes.push(`r.data_hora < $${params.length}::timestamp`)
-    }
-
-    const where = condicoes.length ? `WHERE ${condicoes.join(' AND ')}` : ''
-    const { rows } = await pool.query(`${SELECT_RESERVA} ${where}`, params)
+    const { rows } = await chamar(
+      `SELECT id_reserva, id_cliente, nome_cliente,
+              to_char(data_hora, 'YYYY-MM-DD HH24:MI:SS') AS data_hora,
+              numero_pessoas, status, observacoes, mesas
+         FROM fn_listar_reservas($1, $2, $3)`,
+      [filtro.status ?? null, filtro.de ?? null, filtro.ate ?? null],
+    )
     return rows.map(paraModelo)
   }
 
@@ -60,48 +49,22 @@ export class ReservaRepositoryPg implements ReservaRepository {
     return rows[0] ? paraModelo(rows[0]) : null
   }
 
+  // a função valida data, capacidade e conflito, e grava reserva e mesas na mesma transação
   async inserir(d: NovaReserva): Promise<Reserva> {
-    const client = await pool.connect()
-    try {
-      await client.query('BEGIN')
-      const { rows } = await client.query(
-        `INSERT INTO reserva (id_cliente, data_hora, numero_pessoas, status, observacoes)
-         VALUES ($1, $2::timestamp, $3, 'confirmada', $4) RETURNING id_reserva`,
-        [d.idCliente, d.dataHora, d.numeroPessoas, d.observacoes || null],
-      )
-      const idReserva = rows[0].id_reserva
-      for (const idMesa of d.idMesas) {
-        await client.query('INSERT INTO reserva_mesa (id_reserva, id_mesa) VALUES ($1, $2)', [idReserva, idMesa])
-      }
-      await client.query('COMMIT')
-      return (await this.buscarPorId(String(idReserva)))!
-    } catch (erro) {
-      await client.query('ROLLBACK')
-      throw erro
-    } finally {
-      client.release()
-    }
+    const { rows } = await chamar('SELECT fn_inserir_reserva($1, $2, $3, $4, $5::int[]) AS id', [
+      d.idCliente, d.dataHora, d.numeroPessoas, d.observacoes || null, d.idMesas,
+    ])
+    return (await this.buscarPorId(String(rows[0].id)))!
   }
 
   async atualizar(id: string, d: AtualizacaoReserva): Promise<Reserva | null> {
-    const { rows } = await pool.query(
-      'UPDATE reserva SET status = $2, observacoes = $3 WHERE id_reserva = $1 RETURNING id_reserva',
-      [id, d.status, d.observacoes || null],
-    )
-    return rows[0] ? this.buscarPorId(id) : null
+    await chamar('SELECT fn_atualizar_reserva($1, $2, $3)', [id, d.status, d.observacoes || null])
+    return this.buscarPorId(id)
   }
 
-  async mesaTemConflito(idMesa: string, dataHora: string, duracaoMinutos: number): Promise<boolean> {
-    const { rows } = await pool.query(
-      `SELECT 1
-         FROM reserva_mesa rm JOIN reserva r ON r.id_reserva = rm.id_reserva
-        WHERE rm.id_mesa = $1
-          AND r.status IN ('pendente', 'confirmada', 'em andamento')
-          AND r.data_hora > ($2::timestamp - make_interval(mins => $3::int))
-          AND r.data_hora < ($2::timestamp + make_interval(mins => $3::int))
-        LIMIT 1`,
-      [idMesa, dataHora, duracaoMinutos],
-    )
-    return rows.length > 0
+  // a duração (2h30) está fixa dentro da função SQL, por isso o parâmetro não é usado aqui
+  async mesaTemConflito(idMesa: string, dataHora: string, _duracaoMinutos: number): Promise<boolean> {
+    const { rows } = await chamar('SELECT fn_mesa_tem_conflito($1, $2) AS conflito', [idMesa, dataHora])
+    return rows[0].conflito === true
   }
 }
